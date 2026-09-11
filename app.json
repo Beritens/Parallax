@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Parallax",
+    "slug": "parallax",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.parallax.prototype"
+    },
+    "android": {
+      "package": "com.parallax.prototype"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Parallax to photograph artwork and its real-world reference.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose artwork and reference photos for Parallax.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-sqlite",
+      "expo-sharing"
+    ],
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
