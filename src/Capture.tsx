@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Alignment, initialAlignment, Photo } from './model';
 import { AlignmentControls, AlignmentStage } from './AlignmentStage';
 import { Button, colors, Message } from './ui';
+import CameraPreview from './CameraPreview';
+import { reframeAlignment } from './cameraGeometry';
 
 type Props = {
   photo?: Photo; artwork?: Photo; alignment: Alignment; onAlignment: (value: Alignment) => void;
@@ -30,7 +32,17 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [peek, setPeek] = useState(false);
+  const [previewAspect, setPreviewAspect] = useState(3 / 4);
+  const viewport = useRef({ width: 1, height: 1 });
   const live = !photo || retaking;
+  const displayedAspect = live ? previewAspect : photo.width / photo.height;
+  function changeFrame(from: number, to: number) {
+    if (artwork && from !== to) onAlignment(reframeAlignment(alignment, artwork, viewport.current, from, to));
+  }
+  function acceptPhoto(next: Photo) {
+    changeFrame(displayedAspect, next.width / next.height);
+    onPhoto(next);
+  }
   const overlayVisible = !!artwork && (!!permission?.granted || !live);
   async function run(action: () => Promise<void>) {
     if (lock.current) return;
@@ -44,22 +56,31 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
       if (result.canceled) return;
       const asset = result.assets[0];
       if (!asset.width || !asset.height) throw new Error('This image could not be read. Please choose another.');
-      onPhoto({ uri: asset.uri, width: asset.width, height: asset.height, mimeType: asset.mimeType ?? 'image/jpeg', source: 'library', selectedAt: new Date().toISOString() });
+      acceptPhoto({ uri: asset.uri, width: asset.width, height: asset.height, mimeType: asset.mimeType ?? 'image/jpeg', source: 'library', selectedAt: new Date().toISOString() });
       setRetaking(false); setPeek(false);
     });
   }
   function capture() {
     void run(async () => {
       if (!camera.current || !ready) throw new Error('The camera is still starting. Please try again.');
-      const result = await camera.current.takePictureAsync({ quality: 1 });
+      const result = await camera.current.takePictureAsync({ quality: 1, imageType: 'jpg', isImageMirror: false });
       if (!result) throw new Error('The camera did not return a photo. Please try again.');
-      onPhoto({ uri: result.uri, width: result.width, height: result.height, mimeType: 'image/jpeg', source: 'camera', selectedAt: new Date().toISOString() });
+      acceptPhoto({ uri: result.uri, width: result.width, height: result.height, mimeType: 'image/jpeg', source: 'camera', selectedAt: new Date().toISOString() });
       setRetaking(false); setPeek(false);
     });
   }
-  const retake = () => { setReady(false); setRetaking(!retaking); setPeek(false); setError(''); };
-  const cameraContent = live ? permission?.granted ? <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" ratio={fullscreen ? undefined : '4:3'}
-    onCameraReady={() => setReady(true)} onMountError={e => { setReady(false); setError(e.message); }} />
+  const retake = () => {
+    changeFrame(displayedAspect, retaking && photo ? photo.width / photo.height : previewAspect);
+    setReady(false); setRetaking(!retaking); setPeek(false); setError('');
+  };
+  const cameraContent = live ? permission?.granted ? <CameraPreview ref={camera}
+    onAspect={aspect => {
+      // A new camera's initial dimensions define its starting fit. Only rebase
+      // an existing alignment (retake or an already-running stream resize).
+      if (ready || photo) changeFrame(previewAspect, aspect);
+      setPreviewAspect(aspect);
+    }}
+    onReady={() => setReady(true)} onError={message => { setReady(false); setError(message); }} />
     : <View style={styles.permission}>
       <View style={styles.focusMark}><View style={styles.focusInner} /></View>
       <Text style={styles.cameraTitle}>{artwork ? 'Find the same view.' : 'Start with the artwork.'}</Text>
@@ -75,12 +96,13 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
     </View> : null;
   const image = artwork ? <AlignmentStage artwork={overlayVisible ? artwork : undefined} reference={live ? undefined : photo}
     alignment={peek ? { ...alignment, opacity: 0 } : alignment} onChange={next => onAlignment({ ...next, opacity: alignment.opacity })}
-    interactive={!busy && !peek} fullscreen={fullscreen}>{cameraContent}</AlignmentStage>
-    : live ? <View style={fullscreen ? styles.fill : styles.frame}>{cameraContent}</View>
-      : <Image source={{ uri: photo!.uri }} style={fullscreen ? styles.fill : [styles.frame, { aspectRatio: photo!.width / photo!.height }]} resizeMode={fullscreen ? 'cover' : 'contain'} />;
+    interactive={!busy && !peek} captureFrame sourceAspect={previewAspect}>{cameraContent}</AlignmentStage>
+    : live ? <View style={styles.fill}>{cameraContent}</View>
+      : <Image source={{ uri: photo!.uri }} style={styles.fill} resizeMode="cover" />;
+  const framedImage = <View style={fullscreen ? styles.viewport : styles.frame} onLayout={event => { viewport.current = event.nativeEvent.layout; }}>{image}</View>;
 
   if (fullscreen) return <View style={styles.immersive}>
-    {image}
+    {framedImage}
     <View pointerEvents="box-none" style={[styles.top, { paddingTop: insets.top + 14 }]}>
       <EdgeButton label="Back" symbol="‹" onPress={onBack} disabled={busy} />
       <View pointerEvents="none" style={styles.stepPill}><Text style={styles.stepText}>{artwork ? '02 / 03' : '01 / 03'}  ·  {artwork ? 'REFERENCE' : 'ARTWORK'}</Text></View>
@@ -107,7 +129,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
   </View>;
 
   return <View style={{ gap: 12 }}>
-    {image}
+    {framedImage}
     {!!error && <Message>{error}</Message>}
     {live && permission?.granted && <Button label={busy ? 'Capturing…' : 'Take photo'} onPress={capture} disabled={busy || !ready} />}
     <View style={styles.actions}>
@@ -120,6 +142,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
 }
 
 const styles = StyleSheet.create({
+  viewport: { flex: 1, overflow: 'hidden' },
   immersive: { flex: 1, backgroundColor: '#101412' }, fill: { width: '100%', height: '100%' },
   frame: { width: '100%', aspectRatio: 3 / 4, borderRadius: 20, overflow: 'hidden', backgroundColor: '#101412' },
   permission: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 26, gap: 14, paddingBottom: 110 },

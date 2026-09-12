@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { appendEntry, emptyCollection, fitInside, newDraft, Photo } from '../src/model';
 import { makeArchive } from '../src/archive';
 import { moveArtwork, referenceFrame, TouchPoint } from '../src/gestures';
+import { reframeAlignment } from '../src/cameraGeometry';
 
 const photo: Photo = { uri: 'file:///original.png', width: 800, height: 600, mimeType: 'image/png', source: 'library', selectedAt: '2026-09-11T10:00:00Z' };
 const draft = { ...newDraft('  Old   Bridge '), artwork: photo, reference: photo, description: '  West bank  ' };
@@ -84,4 +85,27 @@ test('full-screen crop and contained detail preview share the same reference coo
   assert.deepEqual(referenceFrame(300, 400, 3 / 4, false), { width: 300, height: 400 });
   const covered = moveArtwork(draft.alignment, [point('a', 100, 100)], [point('a', 160, 180)], { ...frame, width: 600 });
   close(covered.x, 0.1); close(covered.y, 0.1);
+});
+
+test('capture preserves artwork size and position when preview and still ratios differ', () => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 500, height: 500 / 0.75 }]) {
+    for (const [from, to] of [[3 / 4, 16 / 9], [16 / 9, 3 / 4], [3 / 4, 390 / 844]]) {
+      for (const artwork of [{ width: 800, height: 600 }, { width: 600, height: 800 }]) {
+        const alignment = { x: 0.12, y: -0.08, scale: 1.7, rotation: 37, opacity: 0.4 };
+        const next = reframeAlignment(alignment, artwork, viewport, from, to);
+        const before = referenceFrame(viewport.width, viewport.height, from, true);
+        const after = referenceFrame(viewport.width, viewport.height, to, true);
+        const beforeArt = fitInside(artwork.width, artwork.height, before.width, before.height);
+        const afterArt = fitInside(artwork.width, artwork.height, after.width, after.height);
+        close(next.x * after.width, alignment.x * before.width);
+        close(next.y * after.height, alignment.y * before.height);
+        close(next.scale * afterArt.width, alignment.scale * beforeArt.width);
+        close(next.scale * afterArt.height, alignment.scale * beforeArt.height);
+        assert.equal(next.rotation, alignment.rotation);
+        assert.equal(next.opacity, alignment.opacity);
+        const restored = reframeAlignment(next, artwork, viewport, to, from);
+        close(restored.x, alignment.x); close(restored.y, alignment.y); close(restored.scale, alignment.scale);
+      }
+    }
+  }
 });

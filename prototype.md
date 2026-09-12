@@ -34,6 +34,9 @@
   - compact reset and show/hide-artwork controls at the edge
 - confirm the reference photo and its alignment here, or retake
 - original image and alignment coordinates are preserved even when the mobile preview fills/crops to the screen
+- live camera and captured confirmation use the same fixed viewport and centered cover crop on both mobile and desktop
+- preserve the artwork's visible translation, rotation, and scale when camera/photo dimensions change
+- webcam previews and captured photos are both unmirrored, including front-camera fallback on desktop
 
 ## third view
 - add information

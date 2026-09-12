@@ -6,12 +6,12 @@ import { Button, colors } from './ui';
 import { moveArtwork, referenceFrame, TouchPoint } from './gestures';
 const touchStyle: ViewStyle & { touchAction?: string } = Platform.OS === 'web' ? { touchAction: 'none' } : {};
 
-export function AlignmentStage({ artwork, reference, alignment, onChange, children, interactive = true, fullscreen = false }: {
+export function AlignmentStage({ artwork, reference, alignment, onChange, children, interactive = true, fullscreen = false, captureFrame = false, sourceAspect = 3 / 4 }: {
   artwork?: Photo; reference?: Photo; alignment: Alignment; onChange: (alignment: Alignment) => void;
-  children?: React.ReactNode; interactive?: boolean; fullscreen?: boolean;
+  children?: React.ReactNode; interactive?: boolean; fullscreen?: boolean; captureFrame?: boolean; sourceAspect?: number;
 }) {
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const frame = referenceFrame(size.width, size.height, reference ? reference.width / reference.height : 3 / 4, fullscreen);
+  const frame = referenceFrame(size.width, size.height, reference ? reference.width / reference.height : sourceAspect, fullscreen || captureFrame);
   const latest = useRef({ alignment, onChange, size, frame });
   latest.current = { alignment, onChange, size, frame };
   const previous = useRef<TouchPoint[]>([]);
@@ -42,9 +42,9 @@ export function AlignmentStage({ artwork, reference, alignment, onChange, childr
     },
   })).current;
   const fitted = artwork ? fitInside(artwork.width, artwork.height, frame.width, frame.height) : size;
-  return <View style={[styles.stage, fullscreen ? styles.fullscreen : { aspectRatio: reference ? reference.width / reference.height : 3 / 4 }]}
+  return <View style={[styles.stage, (fullscreen || captureFrame) ? styles.fullscreen : { aspectRatio: reference ? reference.width / reference.height : 3 / 4 }]}
     onLayout={event => setSize(event.nativeEvent.layout)}>
-    {reference && <Image source={{ uri: reference.uri }} style={StyleSheet.absoluteFill} resizeMode={fullscreen ? 'cover' : 'contain'} />}
+    {reference && <Image source={{ uri: reference.uri }} style={StyleSheet.absoluteFill} resizeMode={fullscreen || captureFrame ? 'cover' : 'contain'} />}
     {children}
     {artwork && <View {...(interactive ? pan.panHandlers : {})} style={[StyleSheet.absoluteFill, touchStyle]}
       accessibilityLabel={interactive ? 'Artwork: drag to move, use two fingers to rotate and pinch to resize' : 'Aligned artwork preview'}>
