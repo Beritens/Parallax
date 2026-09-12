@@ -48,3 +48,11 @@ pnpm exec expo export --platform android --platform ios
 ```
 
 Manual device checks: allow/deny camera access, capture both images, drag with one finger, rotate/pinch with two fingers (including adding/lifting a finger), retake and go back through all three steps, save to a new and existing subject, restart the app, and share/unzip an export. Browser and native stores are independent.
+
+## Deploy
+
+The web app is deployed to GitHub Pages by `.github/workflows/deploy-pages.yml`. Every push to `main` installs the locked dependencies, exports the Expo web build, and publishes `dist` to:
+
+https://beritens.github.io/Parallax/
+
+For the first deployment, open the repository's **Settings → Pages** page and set **Build and deployment → Source** to **GitHub Actions**. Later pushes to `main` deploy automatically; deployments can also be started manually from the Actions tab.

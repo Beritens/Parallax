@@ -31,8 +31,12 @@
       "expo-sqlite",
       "expo-sharing"
     ],
+    "experiments": {
+      "baseUrl": "/Parallax"
+    },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
