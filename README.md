@@ -20,6 +20,7 @@ Scan the QR code with a compatible Expo Go app on your phone. `pnpm android` / `
 - Mobile capture and confirmation fill the screen with minimal edge controls. Drag with one finger to move the artwork; twist and pinch with two fingers to rotate and resize. Reset and hide/show artwork buttons replace sliders. Desktop retains precision sliders.
 - Alignment is adjusted directly over the live reference camera or its captured/uploaded photo; there is no separate alignment step. Back preserves the draft; replacing artwork resets alignment. Closing asks before discarding unsaved work.
 - Live preview and confirmation use the same fixed viewport and centered cover crop. Browser video dimensions determine its alignment frame; switching to captured dimensions preserves the artwork's visible transform. Front-webcam preview mirroring is disabled to match saved images.
+- The reference overlay starts with the exact centered, screen-filling crop used for artwork confirmation. Reset returns to that crop, including when artwork and camera aspect ratios differ.
 - Subjects are grouped by case-insensitive names with whitespace normalized, and assigned stable IDs.
 - Native images are copied into app documents; SQLite stores metadata. Web uses IndexedDB with durable image data. Saving reports failures and retains the draft.
 - ZIP export of the complete collection, including both originals and a versioned JSON manifest.

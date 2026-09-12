@@ -57,7 +57,7 @@ export function AlignmentStage({ artwork, reference, alignment, onChange, childr
   </View>;
 }
 
-export function AlignmentControls({ alignment, onChange }: { alignment: Alignment; onChange: (alignment: Alignment) => void }) {
+export function AlignmentControls({ alignment, onChange, resetTo = initialAlignment }: { alignment: Alignment; onChange: (alignment: Alignment) => void; resetTo?: Alignment }) {
   const control = (label: string, key: 'rotation' | 'scale' | 'opacity', min: number, max: number, value: string) =>
     <View style={styles.control} key={key}>
       <View style={styles.row}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>
@@ -68,7 +68,7 @@ export function AlignmentControls({ alignment, onChange }: { alignment: Alignmen
     {control('Rotation', 'rotation', -180, 180, `${Math.round(alignment.rotation)}°`)}
     {control('Size', 'scale', 0.2, 3, `${Math.round(alignment.scale * 100)}%`)}
     {control('Artwork opacity', 'opacity', 0, 1, `${Math.round(alignment.opacity * 100)}%`)}
-    <Button label="Reset alignment" secondary onPress={() => onChange({ ...initialAlignment })} />
+    <Button label="Reset alignment" secondary onPress={() => onChange({ ...resetTo })} />
   </View>;
 }
 

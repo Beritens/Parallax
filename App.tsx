@@ -6,6 +6,7 @@ import { exportCollection, loadCollection, saveDraft } from './src/storage';
 import { Capture } from './src/Capture';
 import { AlignmentStage } from './src/AlignmentStage';
 import { Button, colors, Message } from './src/ui';
+import { coverAlignment } from './src/cameraGeometry';
 
 const steps = ['Artwork', 'Reference', 'Details'];
 const titles = ['Start with the artwork.', 'Find the real-world view.', 'Give it a home.'];
@@ -28,6 +29,7 @@ function Main() {
   const [busy, setBusy] = useState(false);
   const [captureBusy, setCaptureBusy] = useState(false);
   const [discard, setDiscard] = useState(false);
+  const [alignmentReady, setAlignmentReady] = useState(false);
   const saveLock = useRef(false);
   const scroll = useRef<ScrollView>(null);
   const blocked = busy || captureBusy;
@@ -53,7 +55,7 @@ function Main() {
   }, [step, blocked]);
 
   function start(subject = '') {
-    setDraft(newDraft(subject)); setStep(0); setError(''); setNotice('');
+    setDraft(newDraft(subject)); setAlignmentReady(false); setStep(0); setError(''); setNotice('');
   }
   function update(patch: Partial<Draft>) { setDraft(previous => ({ ...previous, ...patch })); }
   async function save() {
@@ -75,9 +77,16 @@ function Main() {
   const captureView = (fullscreen: boolean) => <Capture key={step === 0 ? 'artwork' : 'reference'} fullscreen={fullscreen}
     photo={step === 0 ? draft.artwork : draft.reference} artwork={step === 1 ? draft.artwork : undefined}
     alignment={draft.alignment} onAlignment={alignment => update({ alignment })} onBusy={setCaptureBusy}
-    onPhoto={photo => step === 0 ? update({ artwork: photo, alignment: { ...initialAlignment } }) : update({ reference: photo })}
+    onPhoto={photo => step === 0 ? (setAlignmentReady(false), update({ artwork: photo, alignment: { ...initialAlignment } })) : update({ reference: photo })}
     onBack={() => step === 1 ? setStep(0) : setDiscard(true)} onClose={() => setDiscard(true)}
-    onContinue={() => { setError(''); setStep(step === 0 ? 1 : 2); }} />;
+    onContinue={() => {
+      setError('');
+      if (step === 0 && draft.artwork && !alignmentReady) {
+        update({ alignment: coverAlignment(draft.artwork, 3 / 4) });
+        setAlignmentReady(true);
+      }
+      setStep(step === 0 ? 1 : 2);
+    }} />;
   return <SafeAreaView edges={immersive ? [] : ['top', 'bottom', 'left', 'right']} style={[styles.safe, immersive && { backgroundColor: '#101412' }]}>
     <StatusBar barStyle={immersive ? 'light-content' : 'dark-content'} />
     {immersive ? captureView(true) : <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

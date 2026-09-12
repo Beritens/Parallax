@@ -7,7 +7,7 @@ import { Alignment, initialAlignment, Photo } from './model';
 import { AlignmentControls, AlignmentStage } from './AlignmentStage';
 import { Button, colors, Message } from './ui';
 import CameraPreview from './CameraPreview';
-import { reframeAlignment } from './cameraGeometry';
+import { coverAlignment, reframeAlignment } from './cameraGeometry';
 
 type Props = {
   photo?: Photo; artwork?: Photo; alignment: Alignment; onAlignment: (value: Alignment) => void;
@@ -36,6 +36,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
   const viewport = useRef({ width: 1, height: 1 });
   const live = !photo || retaking;
   const displayedAspect = live ? previewAspect : photo.width / photo.height;
+  const resetAlignment = artwork ? coverAlignment(artwork, displayedAspect) : initialAlignment;
   function changeFrame(from: number, to: number) {
     if (artwork && from !== to) onAlignment(reframeAlignment(alignment, artwork, viewport.current, from, to));
   }
@@ -77,7 +78,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
     onAspect={aspect => {
       // A new camera's initial dimensions define its starting fit. Only rebase
       // an existing alignment (retake or an already-running stream resize).
-      if (ready || photo) changeFrame(previewAspect, aspect);
+      changeFrame(previewAspect, aspect);
       setPreviewAspect(aspect);
     }}
     onReady={() => setReady(true)} onError={message => { setReady(false); setError(message); }} />
@@ -109,7 +110,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
       <EdgeButton label="Close" symbol="×" onPress={onClose} disabled={busy} />
     </View>
     {overlayVisible && <View style={[styles.side, { top: insets.top + 84 }]}>
-      <EdgeButton label="Reset alignment" symbol="↺" disabled={busy} onPress={() => { onAlignment({ ...initialAlignment }); setPeek(false); }} />
+      <EdgeButton label="Reset alignment" symbol="↺" disabled={busy} onPress={() => { onAlignment(resetAlignment); setPeek(false); }} />
       <EdgeButton label={peek ? 'Show artwork' : 'Hide artwork to compare'} symbol={peek ? '◉' : '◐'} disabled={busy} onPress={() => setPeek(!peek)} />
     </View>}
     <View pointerEvents="box-none" style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -136,7 +137,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
       <View style={{ flex: 1 }}><Button label="Upload photo" secondary onPress={upload} disabled={busy} /></View>
       {photo && <View style={{ flex: 1 }}><Button label={retaking ? 'Keep previous' : 'Retake photo'} secondary disabled={busy} onPress={retake} /></View>}
     </View>
-    {artwork && <AlignmentControls alignment={alignment} onChange={onAlignment} />}
+    {artwork && <AlignmentControls alignment={alignment} onChange={onAlignment} resetTo={resetAlignment} />}
     <Button label={artwork ? 'Confirm reference →' : 'Use artwork →'} disabled={busy || live} onPress={onContinue} />
   </View>;
 }

@@ -1,5 +1,12 @@
-import { Alignment, fitInside, Photo } from './model';
+import { Alignment, fitInside, initialAlignment, Photo } from './model';
 import { referenceFrame } from './gestures';
+
+// Alignment is stored relative to an aspect-fit artwork. Scale it just enough
+// that the initial overlay uses the same centered cover crop as camera capture.
+export function coverAlignment(artwork: Pick<Photo, 'width' | 'height'>, referenceAspect: number): Alignment {
+  const artworkAspect = artwork.width / artwork.height;
+  return { ...initialAlignment, scale: Math.max(artworkAspect / referenceAspect, referenceAspect / artworkAspect) };
+}
 
 // The viewport remains fixed while source dimensions can change (webcam,
 // native still crop, upload, or retake). Preserve the on-screen artwork transform.

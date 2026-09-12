@@ -28,6 +28,7 @@
 ## second view
 - take picture of reference/reality
 - artwork visible as low opacity overlay
+  - initially use exactly the same centered, screen-filling crop shown when confirming the artwork photo
   - one-finger drag to move; two-finger twist to rotate; pinch to resize
   - these gestures work both over the live camera and after taking/uploading the reference
   - no sliders on mobile; retain sliders for desktop precision

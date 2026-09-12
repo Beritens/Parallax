@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { appendEntry, emptyCollection, fitInside, newDraft, Photo } from '../src/model';
 import { makeArchive } from '../src/archive';
 import { moveArtwork, referenceFrame, TouchPoint } from '../src/gestures';
-import { reframeAlignment } from '../src/cameraGeometry';
+import { coverAlignment, reframeAlignment } from '../src/cameraGeometry';
 
 const photo: Photo = { uri: 'file:///original.png', width: 800, height: 600, mimeType: 'image/png', source: 'library', selectedAt: '2026-09-11T10:00:00Z' };
 const draft = { ...newDraft('  Old   Bridge '), artwork: photo, reference: photo, description: '  West bank  ' };
@@ -106,6 +106,21 @@ test('capture preserves artwork size and position when preview and still ratios 
         const restored = reframeAlignment(next, artwork, viewport, to, from);
         close(restored.x, alignment.x); close(restored.y, alignment.y); close(restored.scale, alignment.scale);
       }
+    }
+  }
+});
+
+test('initial artwork overlay uses the same cover crop as the artwork camera confirmation', () => {
+  for (const referenceAspect of [3 / 4, 16 / 9, 390 / 844]) {
+    for (const artwork of [{ width: 800, height: 600 }, { width: 600, height: 800 }, { width: 1000, height: 1000 }]) {
+      const alignment = coverAlignment(artwork, referenceAspect);
+      const frame = { width: referenceAspect * 1000, height: 1000 };
+      const fitted = fitInside(artwork.width, artwork.height, frame.width, frame.height);
+      close(fitted.width * alignment.scale, Math.max(frame.width, frame.height * artwork.width / artwork.height));
+      close(fitted.height * alignment.scale, Math.max(frame.height, frame.width * artwork.height / artwork.width));
+      assert.ok(fitted.width * alignment.scale + 0.000001 >= frame.width);
+      assert.ok(fitted.height * alignment.scale + 0.000001 >= frame.height);
+      assert.equal(alignment.x, 0); assert.equal(alignment.y, 0); assert.equal(alignment.rotation, 0);
     }
   }
 });
