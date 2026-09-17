@@ -1,6 +1,7 @@
 node_modules/
 .expo/
 dist/
+temp/
 web-build/
 *.tsbuildinfo
 .DS_Store

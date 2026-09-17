@@ -16,6 +16,7 @@
     "@types/react": "~19.2.18",
     "expo": "~57.0.22",
     "expo-camera": "~57.0.5",
+    "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-image-picker": "~57.0.17",
     "expo-sharing": "~57.0.19",

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Collection, Draft, emptyCollection, initialAlignment, newDraft, normalizeSubject } from './src/model';
-import { exportCollection, loadCollection, saveDraft } from './src/storage';
+import { exportCollection, importCollection, loadCollection, saveDraft } from './src/storage';
 import { Capture } from './src/Capture';
 import { AlignmentStage } from './src/AlignmentStage';
 import { Button, colors, Message } from './src/ui';
@@ -29,6 +29,8 @@ function Main() {
   const [busy, setBusy] = useState(false);
   const [captureBusy, setCaptureBusy] = useState(false);
   const [discard, setDiscard] = useState(false);
+  const [confirmImport, setConfirmImport] = useState(false);
+  const [transfer, setTransfer] = useState<'export' | 'import' | null>(null);
   const [alignmentReady, setAlignmentReady] = useState(false);
   const saveLock = useRef(false);
   const scroll = useRef<ScrollView>(null);
@@ -68,10 +70,21 @@ function Main() {
     finally { saveLock.current = false; setBusy(false); }
   }
   async function download() {
-    setBusy(true); setError('');
+    setBusy(true); setTransfer('export'); setError(''); setNotice('');
     try { await exportCollection(collection); }
     catch (e) { setError(e instanceof Error ? e.message : 'Export failed. Please try again.'); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setTransfer(null); }
+  }
+  async function restore() {
+    setBusy(true); setTransfer('import'); setError(''); setNotice('');
+    try {
+      const imported = await importCollection();
+      if (imported) {
+        setCollection(imported);
+        setNotice(`Backup imported: ${imported.subjects.length} subjects and ${imported.entries.length} perspectives.`);
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Import failed. Please check the backup and try again.'); }
+    finally { setBusy(false); setTransfer(null); }
   }
 
   const captureView = (fullscreen: boolean) => <Capture key={step === 0 ? 'artwork' : 'reference'} fullscreen={fullscreen}
@@ -117,9 +130,12 @@ function Main() {
                     <Button label="＋ Add image here" secondary onPress={() => start(subject.name)} disabled={blocked} /></View>
                 </View>;
               })}</View>}
-              <View style={styles.exportCard}><View style={{ flex: 1, gap: 5 }}><Text style={styles.sectionTitle}>Keep your collection.</Text><Text style={styles.small}>Export original photos, alignment, and notes in one ZIP.</Text></View>
-                <Button label={busy ? 'Exporting…' : '↓ Export data'} secondary onPress={() => void download()} disabled={blocked || !collection.entries.length} /></View>
-              <Text style={styles.footnote}>Stored locally. Export a backup before clearing app or browser data.</Text>
+              <View style={styles.exportCard}><View style={{ flex: 1, gap: 5 }}><Text style={styles.sectionTitle}>Keep your collection.</Text><Text style={styles.small}>Export or restore original photos, alignment, and notes in one ZIP.</Text></View>
+                <View style={styles.transferActions}>
+                  <Button label={transfer === 'import' ? 'Importing…' : '↑ Import data'} secondary onPress={() => collection.entries.length ? setConfirmImport(true) : void restore()} disabled={blocked} />
+                  <Button label={transfer === 'export' ? 'Exporting…' : '↓ Export data'} secondary onPress={() => void download()} disabled={blocked || !collection.entries.length} />
+                </View></View>
+              <Text style={styles.footnote}>Stored locally. Importing a backup replaces the collection currently on this device.</Text>
             </>}
           </> : <>
             <View style={styles.flowNav}><Button label="← Back" secondary disabled={blocked} onPress={() => step > 0 ? setStep(step - 1) : setDiscard(true)} />
@@ -151,6 +167,10 @@ function Main() {
       <View style={styles.scrim}><View style={styles.dialog}><Text style={styles.sectionTitle}>Leave this perspective?</Text><Text style={styles.body}>Your unsaved photos and alignment will be discarded.</Text>
         <Button label="Keep editing" onPress={() => setDiscard(false)} /><Button label="Discard draft" secondary onPress={() => { setDiscard(false); setStep(null); setDraft(newDraft()); setError(''); }} /></View></View>
     </Modal>
+    <Modal visible={confirmImport} transparent animationType="fade" onRequestClose={() => setConfirmImport(false)}>
+      <View style={styles.scrim}><View style={styles.dialog}><Text style={styles.sectionTitle}>Replace this collection?</Text><Text style={styles.body}>Importing a backup replaces all subjects and perspectives currently stored on this device. Export first if you want to keep them.</Text>
+        <Button label="Choose backup" onPress={() => { setConfirmImport(false); void restore(); }} /><Button label="Cancel" secondary onPress={() => setConfirmImport(false)} /></View></View>
+    </Modal>
   </SafeAreaView>;
 }
 
@@ -163,7 +183,7 @@ const styles = StyleSheet.create({
   empty: { minHeight: 330, borderWidth: 1, borderStyle: 'dashed', borderColor: '#C9D0BE', borderRadius: 22, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 18 }, emptyTitle: { fontSize: 21, color: colors.ink, fontWeight: '500', textAlign: 'center' },
   emptyArt: { width: 100, height: 86, marginBottom: 8 }, artBack: { width: 65, height: 76, borderWidth: 1, borderColor: '#8B9E77', borderRadius: 9, position: 'absolute', left: 8, transform: [{ rotate: '-14deg' }], backgroundColor: '#E4EBD5' }, artFront: { width: 65, height: 76, borderRadius: 9, position: 'absolute', left: 30, top: 7, transform: [{ rotate: '10deg' }], backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' }, artSymbol: { color: colors.ink, fontSize: 38 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 18 }, card: { flexGrow: 1, flexBasis: 250, maxWidth: 440, backgroundColor: colors.white, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: colors.line }, cover: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#E2E6D8' }, cardContent: { padding: 18, gap: 10 }, cardTitle: { fontSize: 21, fontWeight: '500', color: colors.ink },
-  exportCard: { marginTop: 32, paddingTop: 24, borderTopWidth: 1, borderColor: colors.line, gap: 16, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }, footnote: { marginTop: 18, fontSize: 11, lineHeight: 18, color: colors.muted }, notice: { padding: 14, backgroundColor: '#E3EECF', borderRadius: 12, marginBottom: 18, color: colors.ink },
+  exportCard: { marginTop: 32, paddingTop: 24, borderTopWidth: 1, borderColor: colors.line, gap: 16, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }, transferActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, footnote: { marginTop: 18, fontSize: 11, lineHeight: 18, color: colors.muted }, notice: { padding: 14, backgroundColor: '#E3EECF', borderRadius: 12, marginBottom: 18, color: colors.ink },
   flowNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 24 }, steps: { flexDirection: 'row', gap: 8, marginBottom: 26 }, stepItem: { flex: 1, gap: 8 }, stepLine: { height: 3, backgroundColor: colors.line, borderRadius: 2 }, stepLabel: { color: colors.muted, fontSize: 11 }, flowTitle: { fontSize: 30, letterSpacing: -0.8, color: colors.ink, fontWeight: '500', marginBottom: 10 }, flowBody: { width: '100%', maxWidth: 500, alignSelf: 'center', marginTop: 24 },
   fieldLabel: { color: colors.ink, fontSize: 16, fontWeight: '600' }, input: { padding: 16, borderWidth: 1, borderColor: '#CBD3C4', backgroundColor: colors.white, borderRadius: 12, color: colors.ink, fontSize: 16 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#E8EBE1', borderRadius: 20 }, preview: { maxWidth: 230, width: '100%', alignSelf: 'center' },
   scrim: { flex: 1, backgroundColor: '#10261BCC', alignItems: 'center', justifyContent: 'center', padding: 24 }, dialog: { width: '100%', maxWidth: 380, padding: 24, borderRadius: 22, backgroundColor: colors.background, gap: 18 },

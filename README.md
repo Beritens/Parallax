@@ -23,9 +23,9 @@ Scan the QR code with a compatible Expo Go app on your phone. `pnpm android` / `
 - The reference overlay starts with the exact centered, screen-filling crop used for artwork confirmation. Reset returns to that crop, including when artwork and camera aspect ratios differ.
 - Subjects are grouped by case-insensitive names with whitespace normalized, and assigned stable IDs.
 - Native images are copied into app documents; SQLite stores metadata. Web uses IndexedDB with durable image data. Saving reports failures and retains the draft.
-- ZIP export of the complete collection, including both originals and a versioned JSON manifest.
+- ZIP export and import of the complete collection, including both originals and a versioned JSON manifest. Import validates the archive and asks before replacing existing local data.
 
-Subject viewing and camera/subject position estimation are intentionally deferred. No account, server, location collection, or sync is included. Drafts are held in memory until saved. Clearing app/browser data removes saved data; export backups first. Exports are assembled in memory, so very large collections may exceed device memory. Import is not implemented yet.
+Subject viewing and camera/subject position estimation are intentionally deferred. No account, server, location collection, or sync is included. Drafts are held in memory until saved. Clearing app/browser data removes saved data; export backups first. Exports and imports are assembled in memory, so very large collections may exceed device memory.
 
 ## Export format
 
@@ -36,6 +36,8 @@ images/<entry-id>/reference.<extension>
 ```
 
 `manifest.json` has `schemaVersion: 1`, export time, subjects, and entries. Each entry links to a subject ID and includes image paths, dimensions, MIME types, camera/library source, selection time, creation time, description, and alignment. Selection time records when this app received the image, not the original photo's EXIF timestamp.
+
+Use **Import data** to restore one of these ZIP files. Import replaces the collection on the current device after confirmation; choosing an invalid or unsupported archive leaves the current collection unchanged.
 
 To reconstruct alignment, aspect-fit the artwork inside the reference image, multiply by `scale`, rotate clockwise by `rotation` degrees around the artwork center, then translate by `x * referenceWidth` and `y * referenceHeight`. Positive x is right, positive y is down. The starting origin is the reference center. `opacity` affects only the preview. Original files are never composited or cropped by alignment. Mobile confirmation uses a screen-filling crop for display only; transforms remain relative to the full reference image. Camera preview framing can differ by device; reference confirmation uses the actual captured dimensions.
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import JSZip from 'jszip';
 import { appendEntry, emptyCollection, fitInside, newDraft, Photo } from '../src/model';
-import { makeArchive } from '../src/archive';
+import { makeArchive, readArchive } from '../src/archive';
 import { moveArtwork, referenceFrame, TouchPoint } from '../src/gestures';
 import { coverAlignment, reframeAlignment } from '../src/cameraGeometry';
 
@@ -48,6 +48,35 @@ test('ZIP contains both unchanged originals and a portable, linked manifest', as
   for (const role of ['artwork', 'reference']) {
     assert.deepEqual(await zip.file(manifest.entries[0][role].path)!.async('uint8array'), original);
   }
+});
+
+test('imports an exported ZIP and restores its image bytes', async () => {
+  const original = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+  const collection = appendEntry(emptyCollection(), draft, 'one', '2026-09-11T10:00:00Z');
+  const imported = await readArchive(await makeArchive(collection, async () => original));
+  assert.deepEqual(imported.collection.subjects, collection.subjects);
+  assert.equal(imported.collection.entries[0].artwork.uri, 'images/one/artwork.png');
+  assert.equal(imported.collection.entries[0].description, 'West bank');
+  assert.deepEqual(imported.files.get('images/one/reference.png'), original);
+});
+
+test('rejects backups with unsafe paths, missing subjects, or unsupported versions', async () => {
+  const archive = async (manifest: object) => {
+    const zip = new JSZip();
+    zip.file('manifest.json', JSON.stringify(manifest));
+    zip.file('images/artwork.png', new Uint8Array([1]));
+    zip.file('images/reference.png', new Uint8Array([2]));
+    return zip.generateAsync({ type: 'uint8array' });
+  };
+  const base = {
+    schemaVersion: 1,
+    subjects: [{ id: 'subject', name: 'Bridge', createdAt: '2026-09-11T10:00:00Z' }],
+    entries: [{ id: 'entry', subjectId: 'subject', description: '', createdAt: '2026-09-11T10:00:00Z', alignment: draft.alignment,
+      artwork: { ...photo, path: 'images/artwork.png', uri: undefined }, reference: { ...photo, path: 'images/reference.png', uri: undefined } }],
+  };
+  await assert.rejects(readArchive(await archive({ ...base, schemaVersion: 2 })), /unsupported data version/);
+  await assert.rejects(readArchive(await archive({ ...base, entries: [{ ...base.entries[0], subjectId: 'missing' }] })), /missing subject/);
+  await assert.rejects(readArchive(await archive({ ...base, entries: [{ ...base.entries[0], artwork: { ...base.entries[0].artwork, path: '../artwork.png' } }] })), /unsafe artwork image path/);
 });
 
 const point = (id: string, x: number, y: number): TouchPoint => ({ id, x, y });
