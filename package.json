@@ -4,15 +4,18 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
+    "start": "pnpm prepare:pose && expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
+    "web": "pnpm prepare:pose && expo start --web",
+    "prepare:pose": "node scripts/prepare-pose.mjs",
+    "build:web": "pnpm prepare:pose && expo export --platform web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx tests/model.test.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@react-native-community/slider": "5.2.0",
+    "@techstark/opencv-js": "4.10.0-release.1",
     "@types/react": "~19.2.18",
     "expo": "~57.0.22",
     "expo-camera": "~57.0.5",
@@ -22,6 +25,8 @@
     "expo-sharing": "~57.0.19",
     "expo-sqlite": "~57.0.3",
     "jszip": "^3.10.1",
+    "ml-matrix": "6.12.1",
+    "onnxruntime-web": "1.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -29,6 +34,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "esbuild": "0.25.10",
     "tsx": "^4.20.0",
     "typescript": "~5.9.2"
   }

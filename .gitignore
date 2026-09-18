@@ -5,4 +5,4 @@ temp/
 web-build/
 *.tsbuildinfo
 .DS_Store
-
+public/pose/

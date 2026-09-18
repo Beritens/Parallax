@@ -1,3 +1,5 @@
+import type { Reconstruction } from './pose/types';
+
 export type Photo = {
   uri: string;
   width: number;
@@ -20,7 +22,7 @@ export type Entry = {
   description: string;
   createdAt: string;
 };
-export type Subject = { id: string; name: string; createdAt: string };
+export type Subject = { id: string; name: string; createdAt: string; reconstruction?: Reconstruction };
 export type Collection = { schemaVersion: 1; subjects: Subject[]; entries: Entry[] };
 export const emptyCollection = (): Collection => ({ schemaVersion: 1, subjects: [], entries: [] });
 export type Draft = { artwork?: Photo; reference?: Photo; alignment: Alignment; subject: string; description: string };

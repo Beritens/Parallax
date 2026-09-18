@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { Alignment, Collection, Entry, Photo, Subject } from './model';
+import { parseReconstruction } from './pose/validation';
 
 export const extension = (photo: Photo) => ({ 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' }[photo.mimeType] ?? 'jpg');
 
@@ -82,7 +83,8 @@ export async function readArchive(bytes: Uint8Array): Promise<ImportedArchive> {
   const subjectIds = new Set<string>();
   const subjects: Subject[] = manifest.subjects.map((value, index) => {
     if (!record(value)) throw new Error(`The backup has an invalid subject ${index + 1}.`);
-    const subject = { id: text(value.id, 'subject ID'), name: text(value.name, 'subject name'), createdAt: date(value.createdAt, 'subject date') };
+    const subject: Subject = { id: text(value.id, 'subject ID'), name: text(value.name, 'subject name'), createdAt: date(value.createdAt, 'subject date'),
+      ...(value.reconstruction === undefined ? {} : { reconstruction: parseReconstruction(value.reconstruction) }) };
     if (subjectIds.has(subject.id)) throw new Error('The backup contains duplicate subject IDs.');
     subjectIds.add(subject.id);
     return subject;
@@ -110,6 +112,10 @@ export async function readArchive(bytes: Uint8Array): Promise<ImportedArchive> {
       description: value.description, createdAt: date(value.createdAt, 'entry date') };
   });
 
+  for (const subject of subjects) {
+    const ids = new Set(entries.filter(e => e.subjectId === subject.id).map(e => e.id));
+    if (subject.reconstruction?.entryIds.some(id => !ids.has(id))) throw new Error('The backup camera reconstruction refers to a missing reference or another subject.');
+  }
   const files = new Map<string, Uint8Array>();
   for (const path of paths) files.set(path, await zip.file(path)!.async('uint8array'));
   return { collection: { schemaVersion: 1, subjects, entries }, files };

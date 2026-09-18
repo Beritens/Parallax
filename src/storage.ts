@@ -8,7 +8,7 @@ import { extension, makeArchive, readArchive } from './archive';
 const KEY = 'parallax-collection-v1';
 const resolve = (photo: Photo): Photo => ({ ...photo, uri: photo.uri.startsWith('parallax/') ? new File(Paths.document, photo.uri).uri : photo.uri });
 const relative = (photo: Photo) => ({ ...photo, uri: photo.uri.replace(Paths.document.uri, '').replace(/^\/+/, '') });
-const persistCollection = (collection: Collection) => Storage.setItem(KEY, JSON.stringify({ ...collection,
+export const persistCollection = (collection: Collection) => Storage.setItem(KEY, JSON.stringify({ ...collection,
   entries: collection.entries.map(entry => ({ ...entry, artwork: relative(entry.artwork), reference: relative(entry.reference) })) }));
 export async function loadCollection(): Promise<Collection> {
   const data = await Storage.getItem(KEY);

@@ -47,7 +47,7 @@ export async function saveDraft(collection: Collection, draft: Draft): Promise<C
   return updated;
 }
 
-async function persistCollection(collection: Collection) {
+export async function persistCollection(collection: Collection) {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction('collection', 'readwrite');

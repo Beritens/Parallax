@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Collection, Draft, emptyCollection, initialAlignment, newDraft, normalizeSubject } from './src/model';
-import { exportCollection, importCollection, loadCollection, saveDraft } from './src/storage';
+import { exportCollection, importCollection, loadCollection, saveDraft, persistCollection } from './src/storage';
+import { PosePanel } from './src/PosePanel';
 import { Capture } from './src/Capture';
 import { AlignmentStage } from './src/AlignmentStage';
 import { Button, colors, Message } from './src/ui';
@@ -27,6 +28,7 @@ function Main() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [autoPoseEntry, setAutoPoseEntry] = useState<string | null>(null);
   const [captureBusy, setCaptureBusy] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [confirmImport, setConfirmImport] = useState(false);
@@ -65,6 +67,7 @@ function Main() {
     saveLock.current = true; setBusy(true); setError('');
     try {
       const updated = await saveDraft(collection, draft);
+      setAutoPoseEntry(updated.entries[updated.entries.length - 1].id);
       setCollection(updated); setStep(null); setDraft(newDraft()); setNotice('Perspective saved to your collection.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Your draft is still here; please try again.'); }
     finally { saveLock.current = false; setBusy(false); }
@@ -80,6 +83,7 @@ function Main() {
     try {
       const imported = await importCollection();
       if (imported) {
+        setAutoPoseEntry(null);
         setCollection(imported);
         setNotice(`Backup imported: ${imported.subjects.length} subjects and ${imported.entries.length} perspectives.`);
       }
@@ -127,7 +131,12 @@ function Main() {
                 return <View style={styles.card} key={subject.id}>
                   <Image source={{ uri: entries[0]?.artwork.uri }} accessibilityLabel={`First artwork for ${subject.name}`} style={styles.cover} resizeMode="cover" />
                   <View style={styles.cardContent}><Text style={styles.cardTitle}>{subject.name}</Text><Text style={styles.small}>{entries.length} {entries.length === 1 ? 'perspective' : 'perspectives'}</Text>
-                    <Button label="＋ Add image here" secondary onPress={() => start(subject.name)} disabled={blocked} /></View>
+                    <Button label="＋ Add image here" secondary onPress={() => start(subject.name)} disabled={blocked} />
+                    <PosePanel subject={subject} entries={entries} disabled={blocked} autoRunId={autoPoseEntry} onBusy={setBusy}
+                      onSave={async reconstruction => {
+                        const updated = { ...collection, subjects: collection.subjects.map(s => s.id === subject.id ? { ...s, reconstruction } : s) };
+                        await persistCollection(updated); setCollection(updated);
+                      }} /></View>
                 </View>;
               })}</View>}
               <View style={styles.exportCard}><View style={{ flex: 1, gap: 5 }}><Text style={styles.sectionTitle}>Keep your collection.</Text><Text style={styles.small}>Export or restore original photos, alignment, and notes in one ZIP.</Text></View>
