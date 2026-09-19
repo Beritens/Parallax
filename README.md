@@ -26,7 +26,15 @@ Scan the QR code with a compatible Expo Go app on your phone. `pnpm android` / `
 - ZIP export and import of the complete collection, including both originals and a versioned JSON manifest. Import validates the archive and asks before replacing existing local data.
 - Browser camera pose estimation from reference photos, automatically after saving a second or later perspective, with manual estimation for existing/imported subjects. An interactive 3D viewer shows camera positions and oriented viewing frustums with drag orbit and wheel/pinch zoom; progress, cancellation, coordinates, inlier counts, and unresolved-photo reasons are shown on each subject card.
 
-Subject viewing is deferred. No account, server, location collection, or sync is included. Drafts are held in memory until saved. Clearing app/browser data removes saved data; export backups first. Exports and imports are assembled in memory, so very large collections may exceed device memory.
+No account, server, location collection, or sync is included. Drafts are held in memory until saved. Clearing app/browser data removes saved data; export backups first. Exports and imports are assembled in memory, so very large collections may exceed device memory.
+
+## Artwork viewing
+
+After camera estimation, choose **View artworks** on a subject card. Drag to orbit the estimated subject, or use the azimuth and elevation sliders. The viewer selects the artwork with the closest viewing angle around the subject, independent of camera distance. Releasing a drag snaps the virtual camera to the displayed artwork’s camera position, including its distance from the subject. Reset returns to the first usable viewpoint; orbit radius stays fixed during each drag.
+
+Each reliable camera casts a ray through the center of its aligned artwork in the full reference image. A least-squares fit minimizes squared perpendicular distances to those rays. Tentative cameras do not influence this shared subject estimate, but their camera positions remain available for displaying and snapping to their own artworks. Unresolved cameras have no position and cannot appear in the orbit. Fewer than two reliable cameras, nearly parallel rays, or a fit behind a camera leaves viewing unavailable. The estimate is derived from current alignments and poses, so no additional backup fields are needed.
+
+For each displayed artwork, the subject is projected into its reference camera and the saved fit, scale, rotation, and translation are inverted to find its artwork coordinates. The viewer preserves the alignment rotation and translates that point to the center marker. Artworks are fitted to the viewing area; they are not perspective-warped or blended. A note appears when the projected subject lies beyond an artwork’s edges.
 
 ## Browser camera estimation
 

@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Collection, Draft, emptyCollection, initialAlignment, newDraft, normalizeSubject } from './src/model';
 import { exportCollection, importCollection, loadCollection, saveDraft, persistCollection } from './src/storage';
 import { PosePanel } from './src/PosePanel';
+import { ArtworkViewer } from './src/ArtworkViewer';
 import { Capture } from './src/Capture';
 import { AlignmentStage } from './src/AlignmentStage';
 import { Button, colors, Message } from './src/ui';
@@ -131,6 +132,7 @@ function Main() {
                 return <View style={styles.card} key={subject.id}>
                   <Image source={{ uri: entries[0]?.artwork.uri }} accessibilityLabel={`First artwork for ${subject.name}`} style={styles.cover} resizeMode="cover" />
                   <View style={styles.cardContent}><Text style={styles.cardTitle}>{subject.name}</Text><Text style={styles.small}>{entries.length} {entries.length === 1 ? 'perspective' : 'perspectives'}</Text>
+                    <ArtworkViewer subject={subject} entries={entries} />
                     <Button label="＋ Add image here" secondary onPress={() => start(subject.name)} disabled={blocked} />
                     <PosePanel subject={subject} entries={entries} disabled={blocked} autoRunId={autoPoseEntry} onBusy={setBusy}
                       onSave={async reconstruction => {
