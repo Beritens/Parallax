@@ -50,6 +50,51 @@ Modern browsers need WebAssembly, Web Workers, and OffscreenCanvas. Native apps 
 
 The model projects' licenses apply: see [SuperPoint](https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE), [LightGlue](https://github.com/cvg/LightGlue/blob/main/LICENSE), and [LightGlue-ONNX](https://github.com/fabio-sim/LightGlue-ONNX). SuperPoint weights have a noncommercial license; review that before using this proof of concept commercially.
 
+## Local COLMAP camera estimation
+
+On a subject card, select **COLMAP (local)** and **Export COLMAP photos**. COLMAP cannot execute inside the browser; this option downloads a ZIP for local processing. Install [COLMAP](https://colmap.github.io/install.html) and this project's Node dependencies, then run from the project directory:
+
+```sh
+pnpm colmap /path/to/parallax-colmap.zip /path/to/colmap-result.json
+```
+
+For difficult, low-texture image sets, try the optional enhanced preset:
+
+```sh
+pnpm colmap /path/to/parallax-colmap.zip /path/to/colmap-enhanced.json --enhanced --fixed-focal
+```
+
+`--enhanced` uses affine-shape DSP-SIFT, a lower feature detection threshold, guided matching, and SIMPLE_PINHOLE cameras (one focal length for both pixel axes). `--fixed-focal` holds focal length at the exported FOV assumption during mapping. This can prevent unstable self-calibration with few photos, but an incorrect FOV still biases the result; omit this flag to refine focal length. These options do not lower geometric inlier requirements. Higher camera counts alone do not establish accuracy, particularly with repeated patterns. Output files remain compatible with the normal result importer.
+
+Use **Import COLMAP result** on the same subject to save the JSON's poses and display them in the camera and artwork viewers. Import replaces that subject's previous reconstruction; export a collection backup first if you want to keep both estimates for comparison. Results for another subject or a changed set of references are rejected. Collection backups preserve COLMAP results too. Choosing COLMAP disables automatic browser estimation on that card; the selection is restored from the saved reconstruction when the card is reopened.
+
+The runner requires `colmap` on PATH (or set `COLMAP_BIN` to the executable path), uses CPU SIFT extraction and exhaustive matching, then incremental mapping with bundle adjustment. It detects the old/new CPU option names from COLMAP's command help. Each photo has independent **PINHOLE** intrinsics, initialized from the selected horizontal FOV and subsequently refined. Lens distortion is not modeled, so wide-angle photos may be inaccurate. Exported references are full-resolution PNGs decoded in the browser to preserve its image orientation and coordinate system; artworks are not exported or used for matching.
+
+Only the model with the most registered cameras is imported (scene point count breaks ties); disconnected models are never combined. Unregistered references remain unresolved. Poses are rebased to the first registered reference, with a unit camera baseline and arbitrary scale. Per-camera inlier counts are registered 3D observations; median pixel errors are calculated from their projections. The runner follows COLMAP's [text model format](https://colmap.github.io/format.html) and [command-line workflow](https://colmap.github.io/cli.html).
+
+The command prints and retains a temporary workspace containing the database, photos, and sparse models for inspection in COLMAP. Delete that directory yourself when finished. Existing output JSON files are never overwritten. Failed reconstruction leaves app data unchanged; interrupt the command locally to cancel. No local server or photo upload service is used.
+
+## Local VGGT camera estimation
+
+Choose **VGGT (local)** on a subject card, export its photos, run the local command, then choose **Import VGGT result**. Existing COLMAP photo ZIPs can be used directly, so comparisons use identical reference pixels. VGGT predicts a pose and focal lengths for each photo jointly; it does not require COLMAP to register them first. See the [official VGGT repository](https://github.com/facebookresearch/vggt).
+
+Set up an isolated Python 3.12 environment from the project directory (the example uses [uv](https://docs.astral.sh/uv/)):
+
+```sh
+git clone https://github.com/facebookresearch/vggt.git temp/vggt-source
+git -C temp/vggt-source checkout a288dd0f14786c93483e45524328726ab7b1b4ce
+uv venv --python 3.12 temp/vggt-venv
+uv pip install --python temp/vggt-venv/bin/python torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cpu
+uv pip install --python temp/vggt-venv/bin/python -e temp/vggt-source
+pnpm vggt ./temp/parallax-colmap.zip ./temp/vggt-result.json --device cpu
+```
+
+The runner automatically uses `temp/vggt-venv/bin/python` when present; set `VGGT_PYTHON` for another environment. For NVIDIA acceleration, install a matching CUDA-enabled PyTorch/torchvision pair in that environment and use `--device cuda` (or omit the flag for automatic selection). CPU inference is supported but substantially slower. `--threads 4` is the default CPU thread limit. The first run downloads roughly 5 GB of official `facebook/VGGT-1B` weights into `temp/vggt-cache`; `HF_HOME` can redirect the cache, and `--checkpoint /path/to/model.pt` uses a previously downloaded checkpoint. If the Xet downloader stalls, prefix the command with `HF_HUB_DISABLE_XET=1` to use standard HTTPS. Photos stay local. The original VGGT-1B weights are noncommercial; the separately gated commercial checkpoint has different license terms linked in the upstream README.
+
+Only the camera branch runs. Images use the official 518px padded preprocessing; focal lengths and principal points are transformed back into each original reference's pixel coordinates. The first camera is the origin and the first nonzero baseline sets arbitrary scale. No point cloud, bundle adjustment, inlier count, or reprojection measurement is produced. The UI labels these as predictions and backups record `null` for unavailable camera quality metrics; six predictions are not equivalent to six geometrically verified camera registrations. FOV input is hidden because VGGT predicts its own intrinsics. Results work in the camera and artwork viewers and replace that subject's previous reconstruction when imported.
+
+The importer validates the method, subject, reference IDs, intrinsics, and proper camera rotations before saving. Interrupt the local command to cancel; existing output JSON files are never overwritten. Conversion checks can be run with `temp/vggt-venv/bin/python -m unittest discover -s tests -p test_vggt.py`.
+
 ## Export format
 
 ```text

@@ -1,12 +1,12 @@
-export type Intrinsics = { fx: number; fy: number; cx: number; cy: number; source: 'assumed'; horizontalFov: number };
+export type Intrinsics = { fx: number; fy: number; cx: number; cy: number; source: 'assumed' | 'colmap' | 'vggt'; horizontalFov: number };
 export type CameraPose = {
   // Row-major world-to-camera: Xcamera = R * Xworld + t. OpenCV axes: right, down, forward.
   rotation: number[];
   translation: number[];
   center: number[];
   intrinsics: Intrinsics;
-  inliers: number;
-  reprojectionError: number;
+  inliers: number | null;
+  reprojectionError: number | null;
   // A tentative pose is display-only and is never used to register more cameras.
   status?: 'tentative';
   correspondences?: number;
@@ -14,7 +14,7 @@ export type CameraPose = {
 };
 export type Reconstruction = {
   version: 1;
-  method: 'superpoint-lightglue-sfm';
+  method: 'superpoint-lightglue-sfm' | 'colmap' | 'vggt';
   estimatedAt: string;
   entryIds: string[];
   originEntryId?: string;

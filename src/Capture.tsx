@@ -83,9 +83,8 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
     }}
     onReady={() => setReady(true)} onError={message => { setReady(false); setError(message); }} />
     : <View style={styles.permission}>
-      <View style={styles.focusMark}><View style={styles.focusInner} /></View>
-      <Text style={styles.cameraTitle}>{artwork ? 'Find the same view.' : 'Start with the artwork.'}</Text>
-      <Text style={styles.cameraText}>Enable your camera or choose a photo.</Text>
+      <Text style={styles.cameraTitle}>Camera access</Text>
+      <Text style={styles.cameraText}>Or choose a photo from your library.</Text>
       <Pressable accessibilityRole="button" disabled={busy} style={styles.permissionButton}
         accessibilityLabel={permission?.canAskAgain === false ? 'Open camera settings' : 'Enable camera'}
         onPress={() => void run(async () => {
@@ -105,8 +104,8 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
   if (fullscreen) return <View style={styles.immersive}>
     {framedImage}
     <View pointerEvents="box-none" style={[styles.top, { paddingTop: insets.top + 14 }]}>
-      <EdgeButton label="Back" symbol="‹" onPress={onBack} disabled={busy} />
-      <View pointerEvents="none" style={styles.stepPill}><Text style={styles.stepText}>{artwork ? '02 / 03' : '01 / 03'}  ·  {artwork ? 'REFERENCE' : 'ARTWORK'}</Text></View>
+      {artwork ? <EdgeButton label="Back" symbol="‹" onPress={onBack} disabled={busy} /> : <View style={{ width: 46 }} />}
+      <View pointerEvents="none" style={styles.stepPill}><Text style={styles.stepText}>{artwork ? '2 / 3' : '1 / 3'}</Text></View>
       <EdgeButton label="Close" symbol="×" onPress={onClose} disabled={busy} />
     </View>
     {overlayVisible && <View style={[styles.side, { top: insets.top + 84 }]}>
@@ -115,7 +114,7 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
     </View>}
     <View pointerEvents="box-none" style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 20) }]}>
       {!!error && <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View>}
-      <Text pointerEvents="none" style={styles.hint}>{overlayVisible ? 'Drag to move · Two fingers to rotate & resize' : !live ? 'Keep this artwork?' : artwork ? 'Frame the real-world view' : 'Frame the artwork'}</Text>
+      {overlayVisible && <Text pointerEvents="none" style={styles.hint}>Drag · pinch · twist</Text>}
       <View style={styles.captureRow}>
         <View style={styles.wing}><EdgeButton label="Upload photo" symbol="▧" onPress={upload} disabled={busy} /><Text style={styles.edgeCaption}>Library</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={live ? 'Take photo' : artwork ? 'Confirm reference' : 'Use artwork'}
@@ -125,7 +124,6 @@ export function Capture({ photo, artwork, alignment, onAlignment, onPhoto, onBus
         </Pressable>
         <View style={styles.wing}>{photo ? <><EdgeButton label={retaking ? 'Keep previous' : 'Retake photo'} symbol={retaking ? '↶' : '↻'} onPress={retake} disabled={busy} /><Text style={styles.edgeCaption}>{retaking ? 'Keep' : 'Retake'}</Text></> : <View style={{ width: 48 }} />}</View>
       </View>
-      <Text pointerEvents="none" style={styles.bottomLabel}>{live ? 'CAPTURE' : artwork ? 'CONFIRM REFERENCE' : 'USE ARTWORK'}</Text>
     </View>
   </View>;
 
@@ -147,8 +145,6 @@ const styles = StyleSheet.create({
   immersive: { flex: 1, backgroundColor: '#101412' }, fill: { width: '100%', height: '100%' },
   frame: { width: '100%', aspectRatio: 3 / 4, borderRadius: 20, overflow: 'hidden', backgroundColor: '#101412' },
   permission: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 26, gap: 14, paddingBottom: 110 },
-  focusMark: { width: 60, height: 60, borderRadius: 18, borderWidth: 1, borderColor: '#5B665E', alignItems: 'center', justifyContent: 'center', marginBottom: 14, transform: [{ rotate: '-8deg' }] },
-  focusInner: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.accent, transform: [{ rotate: '16deg' }] },
   cameraTitle: { color: 'white', fontSize: 25, fontWeight: '400', letterSpacing: -0.8 }, cameraText: { color: '#99A69B', textAlign: 'center', fontSize: 13, lineHeight: 20 },
   permissionButton: { borderWidth: 1, borderColor: '#566157', paddingHorizontal: 22, paddingVertical: 14, borderRadius: 28, marginTop: 8 }, permissionText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 10 },
@@ -157,10 +153,10 @@ const styles = StyleSheet.create({
   edgeSymbol: { fontSize: 27, color: '#FFF', lineHeight: 32, fontWeight: '300' }, stepPill: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: '#10141299' },
   stepText: { color: '#FFF', fontSize: 10, letterSpacing: 1.6, fontWeight: '600' },
   side: { position: 'absolute', right: 18, gap: 12 },
-  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingTop: 16, gap: 16, backgroundColor: '#10141255' },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingTop: 14, gap: 12, backgroundColor: '#10141255' },
   hint: { textAlign: 'center', color: '#FFF', fontSize: 12, textShadowColor: '#000', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
   captureRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, wing: { width: 70, alignItems: 'center', gap: 6 }, edgeCaption: { color: '#FFF', fontSize: 11 },
   shutter: { width: 78, height: 78, borderRadius: 39, borderWidth: 2, borderColor: '#FFF', padding: 5, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: '100%', height: '100%', borderRadius: 34, backgroundColor: '#FFF' }, confirm: { backgroundColor: colors.accent, borderColor: colors.accent }, check: { fontSize: 34, color: '#19241C' },
-  bottomLabel: { color: '#FFF', fontSize: 9, letterSpacing: 2.2, textAlign: 'center' }, error: { backgroundColor: '#45281FEB', borderRadius: 12, padding: 12 }, errorText: { color: '#FFF', fontSize: 12, lineHeight: 18 },
+  error: { backgroundColor: '#45281FEB', borderRadius: 12, padding: 12 }, errorText: { color: '#FFF', fontSize: 12, lineHeight: 18 },
 });

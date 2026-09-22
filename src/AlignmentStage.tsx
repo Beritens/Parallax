@@ -64,7 +64,6 @@ export function AlignmentControls({ alignment, onChange, resetTo = initialAlignm
       <Range label={label} min={min} max={max} value={alignment[key]} onChange={v => onChange({ ...alignment, [key]: v })} />
     </View>;
   return <View style={styles.controls}>
-    <Text style={styles.hint}>Drag the artwork to move it. Use the controls to fine-tune.</Text>
     {control('Rotation', 'rotation', -180, 180, `${Math.round(alignment.rotation)}°`)}
     {control('Size', 'scale', 0.2, 3, `${Math.round(alignment.scale * 100)}%`)}
     {control('Artwork opacity', 'opacity', 0, 1, `${Math.round(alignment.opacity * 100)}%`)}
@@ -77,5 +76,4 @@ const styles = StyleSheet.create({
   fullscreen: { flex: 1, borderRadius: 0 },
   controls: { gap: 8, paddingTop: 12 }, control: { gap: 5 }, row: { flexDirection: 'row', justifyContent: 'space-between' },
   label: { color: colors.ink, fontSize: 14, fontWeight: '500' }, value: { color: colors.muted, fontSize: 14 },
-  hint: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: 8 },
 });

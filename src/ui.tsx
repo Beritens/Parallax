@@ -12,7 +12,7 @@ export function Message({ children }: { children: React.ReactNode }) {
   return <View accessibilityRole="alert" style={styles.message}><Text style={{ color: colors.ink, lineHeight: 21 }}>{children}</Text></View>;
 }
 const styles = StyleSheet.create({
-  button: { minHeight: 48, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  secondary: { backgroundColor: '#E8EBE1' }, buttonText: { color: colors.white, fontSize: 15, fontWeight: '600' },
+  button: { minHeight: 42, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 11, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.ink },
+  secondary: { backgroundColor: 'transparent', borderColor: colors.line }, buttonText: { color: colors.white, fontSize: 14, fontWeight: '600' },
   message: { padding: 16, backgroundColor: '#F4E8CC', borderRadius: 12, marginVertical: 8 },
 });

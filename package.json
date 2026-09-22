@@ -11,7 +11,9 @@
     "prepare:pose": "node scripts/prepare-pose.mjs",
     "build:web": "pnpm prepare:pose && expo export --platform web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "colmap": "tsx scripts/colmap.ts",
+    "vggt": "tsx scripts/vggt.ts"
   },
   "dependencies": {
     "@react-native-community/slider": "5.2.0",

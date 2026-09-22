@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { artworkRay, estimateSubject, nearestArtwork, orbitFromCamera, orbitPosition, snapArtworkOrbit, subjectOnArtwork, Vec3 } from '../src/artworkGeometry';
+import { artworkRay, artworkViewerLayout, estimateSubject, nearestArtwork, orbitFromCamera, orbitPosition, snapArtworkOrbit, subjectOnArtwork, Vec3 } from '../src/artworkGeometry';
 import { Entry, initialAlignment } from '../src/model';
 import { camera, identity, intrinsics } from '../src/pose/geometry';
 import { Reconstruction } from '../src/pose/types';
@@ -15,6 +15,48 @@ const reconstruction: Reconstruction = { version: 1, method: 'superpoint-lightgl
 const point: Vec3 = [-1, -1, 5];
 const entries = [entry('a', -k.fx / 5 / 800, -k.fy / 5 / 600), entry('b', -3 * k.fx / 5 / 800, -k.fy / 5 / 600)];
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
+
+test('viewer halves artwork dimensions at twice the orbit distance and preserves alignment scale', () => {
+  const subject: Vec3 = [0, 0, 5], viewport = { width: 800, height: 600 };
+  const e = entry('a', 0);
+  const near = artworkViewerLayout(e, poses.a, subject, viewport, 5)!;
+  const far = artworkViewerLayout(e, poses.a, subject, viewport, 10)!;
+  close(near.width, 720); close(near.height, 540);
+  close(far.width, near.width / 2); close(far.height, near.height / 2);
+  const enlarged = artworkViewerLayout({ ...e, alignment: { ...e.alignment, scale: 2 } }, poses.a, subject, viewport, 10)!;
+  close(enlarged.width, near.width); close(enlarged.height, near.height);
+  // Reconstruction units are arbitrary: only distance ratios may affect size.
+  const rescaled = artworkViewerLayout(e, poses.a, [0, 0, 50], viewport, 50)!;
+  close(rescaled.width, near.width);
+});
+
+test('alignment encodes capture distance and is not shrunk a second time', () => {
+  const subject: Vec3 = [0, 0, 5], viewport = { width: 800, height: 600 };
+  const nearEntry = entry('a', 0);
+  const farEntry = { ...entry('b', 0), alignment: { ...initialAlignment, scale: 0.5 } };
+  const farPose = camera(identity(), [0, 0, 5], k, 50, 0);
+  const near = artworkViewerLayout(nearEntry, poses.a, subject, viewport, 5)!;
+  // The same drawing aligned at twice the capture distance has half the scale.
+  // At a shared viewer distance both sources must display at the same size.
+  const duringOrbit = artworkViewerLayout(farEntry, farPose, subject, viewport, 5)!;
+  close(duringOrbit.width, near.width);
+  const snapped = artworkViewerLayout(farEntry, farPose, subject, viewport, 10)!;
+  close(snapped.width, near.width / 2);
+  close(snapped.height, near.height / 2);
+});
+
+test('viewer retains reference fit and centers an offset subject after rotation and scaling', () => {
+  const e = { ...entry('a', 0.1, -0.1), artwork: { ...photo, width: 400, height: 800 },
+    alignment: { ...initialAlignment, x: 0.1, y: -0.1, scale: 1.7, rotation: 37 } };
+  const layout = artworkViewerLayout(e, poses.a, [0, 0, 10], { width: 800, height: 600 }, 5)!;
+  close(layout.width, 300 * 0.9 * 1.7 * 2);
+  close(layout.height, 600 * 0.9 * 1.7 * 2);
+  const x = (layout.anchor.x / e.artwork.width - 0.5) * layout.width;
+  const y = (layout.anchor.y / e.artwork.height - 0.5) * layout.height;
+  const angle = 37 * Math.PI / 180;
+  close(layout.left + layout.width / 2 + Math.cos(angle) * x - Math.sin(angle) * y, 400);
+  close(layout.top + layout.height / 2 + Math.sin(angle) * x + Math.cos(angle) * y, 300);
+});
 
 test('casts upper-left alignment rays and recovers their common subject', () => {
   const ray = artworkRay(entries[0], poses.a);

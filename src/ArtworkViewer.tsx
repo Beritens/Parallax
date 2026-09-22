@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Image, Modal, PanResponder, Platform, Text, View, ViewStyle } from 'react-native';
-import { Entry, fitInside, Subject } from './model';
-import { estimateSubject, nearestArtwork, Orbit, orbitFromCamera, orbitPosition, snapArtworkOrbit, subjectOnArtwork } from './artworkGeometry';
+import { Entry, Subject } from './model';
+import { artworkViewerLayout, estimateSubject, nearestArtwork, Orbit, orbitFromCamera, orbitPosition, snapArtworkOrbit } from './artworkGeometry';
 import { Button, colors } from './ui';
 import Range from './Range';
 
@@ -48,16 +48,12 @@ function OrbitViewer({ subject, entries, estimate, onClose }: {
     onPanResponderTerminate: () => snap.current(),
   })).current;
   const selected = nearestArtwork(entries, reconstruction, orbitPosition(estimate.point, orbit), estimate.point);
-  const anchor = selected && subjectOnArtwork(selected, reconstruction.cameras[selected.id], estimate.point);
+  const layout = selected && artworkViewerLayout(selected, reconstruction.cameras[selected.id], estimate.point, size, orbit.radius);
+  const anchor = layout?.anchor;
   let artworkStyle: ViewStyle = {};
-  if (selected && anchor) {
-    const fitted = fitInside(selected.artwork.width, selected.artwork.height, size.width * 0.9, size.height * 0.9);
-    const scale = fitted.width / selected.artwork.width;
-    const angle = selected.alignment.rotation * Math.PI / 180;
-    const x = (anchor.x - selected.artwork.width / 2) * scale, y = (anchor.y - selected.artwork.height / 2) * scale;
-    artworkStyle = { position: 'absolute', width: fitted.width, height: fitted.height,
-      left: size.width / 2 - fitted.width / 2 - (Math.cos(angle) * x - Math.sin(angle) * y),
-      top: size.height / 2 - fitted.height / 2 - (Math.sin(angle) * x + Math.cos(angle) * y),
+  if (selected && layout) {
+    artworkStyle = { position: 'absolute', width: layout.width, height: layout.height,
+      left: layout.left, top: layout.top,
       transform: [{ rotate: `${selected.alignment.rotation}deg` }] };
   }
   const outside = selected && anchor && (anchor.x < 0 || anchor.y < 0 || anchor.x > selected.artwork.width || anchor.y > selected.artwork.height);
@@ -65,7 +61,6 @@ function OrbitViewer({ subject, entries, estimate, onClose }: {
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <Text style={{ flex: 1, color: colors.ink, fontSize: 22 }}>{subject.name}</Text><Button secondary label="Close viewer" onPress={onClose} />
     </View>
-    <Text style={{ color: colors.muted }}>Drag to orbit the subject. The closest viewing angle selects the artwork. Release to snap to its viewpoint.</Text>
     <View {...pan.panHandlers} accessibilityLabel="Artwork orbit viewer" onLayout={event => setSize(event.nativeEvent.layout)}
       style={[{ flex: 1, minHeight: 160, overflow: 'hidden', backgroundColor: '#1B2822', borderRadius: 16 },
         Platform.OS === 'web' ? { touchAction: 'none' } as ViewStyle : {}]}>
@@ -76,12 +71,9 @@ function OrbitViewer({ subject, entries, estimate, onClose }: {
     <Text accessibilityLiveRegion="polite" style={{ color: colors.ink }}>Artwork {selected ? entries.indexOf(selected) + 1 : '—'} of {entries.length}{selected?.description ? ` · ${selected.description}` : ''}</Text>
     {!!outside && <Text style={{ color: colors.muted }}>The estimated subject falls outside this artwork’s edges.</Text>}
     <View style={{ width: '100%', maxWidth: 720, alignSelf: 'center', gap: 4 }}>
-      <Text style={{ color: colors.muted }}>Orbit around subject</Text>
       <Range label="Orbit azimuth" min={-180} max={180} value={((orbit.yaw * 180 / Math.PI + 180) % 360 + 360) % 360 - 180} onChange={value => setOrbit({ ...orbit, yaw: value * Math.PI / 180 })} />
-      <Text style={{ color: colors.muted }}>Elevation</Text>
       <Range label="Orbit elevation" min={-89} max={89} value={orbit.pitch * 180 / Math.PI} onChange={value => setOrbit({ ...orbit, pitch: value * Math.PI / 180 })} />
       <Button secondary label="Reset viewpoint" onPress={() => setOrbit(initial)} />
     </View>
-    <Text style={{ color: colors.muted, fontSize: 11 }}>Subject estimated from {estimate.rays.length} aligned artworks. Center marker shows the estimated subject.</Text>
   </View>;
 }

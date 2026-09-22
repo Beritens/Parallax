@@ -58,6 +58,26 @@ export function subjectOnArtwork(entry: Entry, pose: CameraPose, point: Vec3) {
     y: entry.artwork.height / 2 + (-Math.sin(angle) * x + Math.cos(angle) * y) / scale };
 }
 
+/** Alignment already contains the source camera's perspective shrinkage.
+ * Recover its size at the source distance, then project at the orbit distance.
+ */
+export function artworkViewerLayout(entry: Entry, pose: CameraPose, subject: Vec3,
+  viewport: { width: number; height: number }, viewerDistance: number) {
+  const anchor = subjectOnArtwork(entry, pose, subject);
+  const distance = Math.hypot(...subtract(pose.center, subject));
+  if (!anchor || distance <= 1e-6 || !Number.isFinite(viewerDistance) || viewerDistance <= 1e-6) return null;
+  const referenceFit = fitInside(entry.reference.width, entry.reference.height, viewport.width * 0.9, viewport.height * 0.9);
+  const artworkFit = fitInside(entry.artwork.width, entry.artwork.height, entry.reference.width, entry.reference.height);
+  const scale = artworkFit.width / entry.artwork.width * referenceFit.width / entry.reference.width
+    * entry.alignment.scale * distance / viewerDistance;
+  const width = entry.artwork.width * scale, height = entry.artwork.height * scale;
+  const angle = entry.alignment.rotation * Math.PI / 180;
+  const x = (anchor.x - entry.artwork.width / 2) * scale, y = (anchor.y - entry.artwork.height / 2) * scale;
+  return { anchor, width, height,
+    left: viewport.width / 2 - width / 2 - (Math.cos(angle) * x - Math.sin(angle) * y),
+    top: viewport.height / 2 - height / 2 - (Math.sin(angle) * x + Math.cos(angle) * y) };
+}
+
 export type Orbit = { yaw: number; pitch: number; radius: number };
 export function orbitFromCamera(center: number[], subject: Vec3): Orbit {
   const d = subtract(center, subject), radius = Math.hypot(...d);

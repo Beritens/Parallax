@@ -4,14 +4,15 @@ const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v ===
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const array = (v: unknown, n: number): v is number[] => Array.isArray(v) && v.length === n && v.every(finite);
 const count = (v: unknown): v is number => finite(v) && Number.isSafeInteger(v) && v >= 0;
-function validCamera(v: unknown): v is CameraPose {
-  if (!record(v) || !array(v.rotation, 9) || !array(v.translation, 3) || !array(v.center, 3) || !count(v.inliers) || !finite(v.reprojectionError) || v.reprojectionError < 0 || !record(v.intrinsics)) return false;
+function validCamera(v: unknown, predicted: boolean): v is CameraPose {
+  if (!record(v) || !array(v.rotation, 9) || !array(v.translation, 3) || !array(v.center, 3) || !record(v.intrinsics)) return false;
+  if (predicted ? v.inliers !== null || v.reprojectionError !== null || v.status !== undefined : !count(v.inliers) || !finite(v.reprojectionError) || v.reprojectionError < 0) return false;
   if (v.status !== undefined && v.status !== 'tentative') return false;
-  if (v.correspondences !== undefined && (!count(v.correspondences) || v.correspondences < v.inliers)) return false;
+  if (v.correspondences !== undefined && (!count(v.correspondences) || (!count(v.inliers) || v.correspondences < v.inliers))) return false;
   if (v.warning !== undefined && typeof v.warning !== 'string') return false;
-  if (v.status === 'tentative' && (!count(v.correspondences) || v.correspondences < v.inliers || typeof v.warning !== 'string' || !v.warning.trim())) return false;
+  if (v.status === 'tentative' && (!count(v.correspondences) || (!count(v.inliers) || v.correspondences < v.inliers) || typeof v.warning !== 'string' || !v.warning.trim())) return false;
   const k = v.intrinsics, R = v.rotation, t = v.translation, C = v.center;
-  if (k.source !== 'assumed' || !finite(k.fx) || k.fx <= 0 || !finite(k.fy) || k.fy <= 0 || !finite(k.cx) || !finite(k.cy) || !finite(k.horizontalFov) || k.horizontalFov < 20 || k.horizontalFov > 120) return false;
+  if ((k.source !== 'assumed' && k.source !== 'colmap' && k.source !== 'vggt') || !finite(k.fx) || k.fx <= 0 || !finite(k.fy) || k.fy <= 0 || !finite(k.cx) || !finite(k.cy) || !finite(k.horizontalFov) || k.horizontalFov <= 0 || k.horizontalFov >= 180) return false;
   for (let i = 0; i < 3; i++) {
     if (Math.abs(C[i] + R[i]*t[0] + R[3+i]*t[1] + R[6+i]*t[2]) > 1e-4) return false;
     for (let j = 0; j < 3; j++) {
@@ -24,10 +25,10 @@ function validCamera(v: unknown): v is CameraPose {
 }
 export function parseReconstruction(value: unknown): Reconstruction {
   const invalid = () => { throw new Error('The backup has invalid camera reconstruction data.'); };
-  if (!record(value) || value.version !== 1 || value.method !== 'superpoint-lightglue-sfm' || value.scale !== 'arbitrary' || typeof value.estimatedAt !== 'string' || !Number.isFinite(Date.parse(value.estimatedAt)) || !finite(value.horizontalFov) || value.horizontalFov < 20 || value.horizontalFov > 120 || !count(value.pointCount)) return invalid();
+  if (!record(value) || value.version !== 1 || (value.method !== 'superpoint-lightglue-sfm' && value.method !== 'colmap' && value.method !== 'vggt') || value.scale !== 'arbitrary' || typeof value.estimatedAt !== 'string' || !Number.isFinite(Date.parse(value.estimatedAt)) || !finite(value.horizontalFov) || value.horizontalFov < 20 || value.horizontalFov > 120 || !count(value.pointCount)) return invalid();
   if (!Array.isArray(value.entryIds) || !value.entryIds.every(id => typeof id === 'string') || new Set(value.entryIds).size !== value.entryIds.length || !record(value.cameras) || !record(value.unresolved)) return invalid();
   const ids = new Set(value.entryIds);
-  for (const [id, pose] of Object.entries(value.cameras)) if (!ids.has(id) || !validCamera(pose) || pose.intrinsics.horizontalFov !== value.horizontalFov) return invalid();
+  for (const [id, pose] of Object.entries(value.cameras)) if (!ids.has(id) || !validCamera(pose, value.method === 'vggt') || (value.method === 'superpoint-lightglue-sfm' ? pose.intrinsics.source !== 'assumed' || pose.intrinsics.horizontalFov !== value.horizontalFov : pose.intrinsics.source !== value.method)) return invalid();
   for (const [id, reason] of Object.entries(value.unresolved)) if (!ids.has(id) || typeof reason !== 'string' || Object.hasOwn(value.cameras, id)) return invalid();
   for (const id of ids) if (!Object.hasOwn(value.cameras, id) && !Object.hasOwn(value.unresolved, id)) return invalid();
   const n = Object.keys(value.cameras).length;

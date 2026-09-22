@@ -76,7 +76,7 @@ async function run(request: PoseRequest) {
     const result = reconstruct(cv, features, pairs, request.horizontalFov, progress);
     for (const [id, pose] of Object.entries(result.cameras)) {
       const original = originalIntrinsics.get(id)!;
-      pose.intrinsics = original.k; pose.reprojectionError /= original.scale;
+      pose.intrinsics = original.k; if (pose.reprojectionError !== null) pose.reprojectionError /= original.scale;
     }
     return result;
   } finally { await extractor?.release(); await matcher?.release(); }

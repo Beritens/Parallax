@@ -82,7 +82,7 @@ test('keeps a coherent low-consensus PnP pose as tentative without using it for 
   const tentative = result.cameras['2'];
   assert.equal(tentative.status,'tentative');
   assert.equal(tentative.correspondences,67);
-  assert.ok(tentative.inliers >= 12 && tentative.inliers < 67*.4);
+  assert.ok(tentative.inliers !== null && tentative.inliers >= 12 && tentative.inliers < 67*.4);
   assert.match(tentative.warning ?? '',/tentative/);
   assert.equal(result.unresolved['2'],undefined);
   assert.equal(parseReconstruction(result),result);
